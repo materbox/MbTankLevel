@@ -6,7 +6,7 @@
 /************* Define default values *************/
 constexpr uint32_t SERIAL_DEBUG_BAUD    = 115200U;
 const char* CURRENT_FIRMWARE_TITLE      =    "Event-Horizon";
-const char* CURRENT_FIRMWARE_VERSION    =  "0.1.0";
+const char* CURRENT_FIRMWARE_VERSION    =  "0.1.1";
 const char* deviceName                  = "Nivel tinaco";
 unsigned long mtime = 0;
 int TIME_TO_SEND_TELEMETRY  = 30; //every x seconds to send tellemetry
@@ -156,9 +156,20 @@ const uint8_t Celsius[] = {
 };
 
 // Create the level Symbol
-const uint8_t level[] = {
+const uint8_t levelFull[] = {
   SEG_A | SEG_D | SEG_G  // %
 };
+
+// Create the level Symbol
+const uint8_t levelHalf[] = {
+  SEG_D | SEG_G  // %
+};
+
+// Create the level Symbol
+const uint8_t levelMin[] = {
+  SEG_D  // %
+};
+
 /************* End 7 segments *************/
 
 MATERBOX mb;
@@ -210,15 +221,7 @@ void loop() {
             sendTelemetryJson(getTankLevelJson());
           }
           if (BME280_DETECTED){
-              if(switchData){
-                display.showNumberDec(bme.readTemperature(), false, 2, 0);
-                display.setSegments(Celsius, 2, 2);
-                switchData = false;
-              } else {
-                display.showNumberDec(getTankLevel(), false, 3, 0);
-                display.setSegments(level, 1, 3);
-                switchData = true;
-              }
+            printDataOnDisplay();
             sendTelemetryJson(getBme280DataJson());
           }
         }
@@ -229,17 +232,28 @@ void loop() {
       mtime = millis();
     }
   } else {
-    if(switchData){
-      display.showNumberDec(bme.readTemperature(), false, 2, 0);
-      display.setSegments(Celsius, 2, 2);
-      switchData = false;
-    } else {
-      display.showNumberDec(getTankLevel(), false, 3, 0);
-      display.setSegments(level, 1, 3);
-      switchData = true;
-    }
+    printDataOnDisplay();
   }
   tb.loop();
+}
+
+void printDataOnDisplay(){
+  float TankLevel = getTankLevel();
+  if(switchData){
+    display.showNumberDec(bme.readTemperature(), false, 2, 0);
+    display.setSegments(Celsius, 2, 2);
+    switchData = false;
+  } else {
+    display.showNumberDec(TankLevel, false, 3, 0);
+    if (TankLevel >= 70){
+      display.setSegments(levelFull, 1, 3);
+    } else if(TankLevel >= 45){
+      display.setSegments(levelHalf, 1, 3);
+    } else {
+      display.setSegments(levelMin, 1, 3);
+    }
+    switchData = true;
+  }
 }
 
 void setupBme280Sensor(){
